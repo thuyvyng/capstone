@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<style>
+	
+	h1{
+		color: white;
+	}
+	body {
+		background-color: black;
+		font-family: Arial, sans-serif;
+		font-size: larger;
+	}
+	.box_highlighted { 
+		background-color: #ffb; 
+		border: 1px solid #b53;
+	}
+
+	.highlight{
+		background-color: yellow;
+	}
+
+	.lighthigh{
+		background-color: green;
+	}
+
+	li{
+		font-size: smaller;
+	}
+
+	td{
+		min-width: 100px;
+	}
+
+	#review{
+		border:1px solid pink; 
+		padding: 5px; 
+		float: right; 
+		width: 800px; 
+		height: 1100px; 
+		background-color: white;
+		color: black;
+		margin: 20px;
+		overflow: scroll;
+	}
+
+	#matrix{
+		border:1px solid pink; 
+		padding: 5px; 
+		float: left;
+		width: 1200px; 
+		height: 1100px; 		
+		margin: 20px;
+		overflow: scroll;
+	}
+	
+
+</style>
+</head>
+<body>
+	<h1> Interactive Confusion Matrix</h1>
+	<div id="matrix"> </div>
+	<div id="review">
+		Data 
+		<ul id = "testList">
+		</ul>
+	</div>
+
+<script>
+	function getType(num) {
+		if(num == "0"){
+			return "bad"
+		}else if(num == "1"){
+			return "good"
+		}else{
+			return "invalid"
+		}
+	}
+
+    d3.json("test.json", function(d) {
+
+		var square_size = 2;
+        var table = new Array(square_size);
+		var dataset = [];
+
+		for(var i = 0; i < square_size; i++){
+			table[i] = new Array(square_size);
+			for (var j = 0; j < square_size; j++)    { 
+				table[i][j] = 0
+			} 
+		}
+
+        for (var i = 0; i < d.length; i += 1) {
+			table[parseInt(d[i]["true_label"])][parseInt(d[i]["predicted_label"])] += 1;
+			dataset.push([d[i]["true_label"],d[i]["predicted_label"],d[i]["text"],d[i]["index"]]);
+        }
+
+
+		var w = 1050;
+        var h = 1050;
+        
+        //Create SVG element
+        var svg = d3.select("body")
+					.select("#matrix")
+                    .append("svg")
+                    .attr("width", w)
+                    .attr("height", h);
+
+					
+		var rect = svg.selectAll("rect")
+            .data(dataset)
+            .enter()
+            .append("rect")
+
+		var counters = new Array(square_size * square_size).fill(0);
+		var ycounters = new Array(square_size * square_size).fill(0);
+		
+        //d[0] = true_label, d[1] = predicted label, d[2] = text
+        rect.attr("x", function(d, i) {
+					var matrixnum = (parseInt(d[1])*2) + parseInt(d[0])
+					var inmatrixcol = counters[matrixnum] % 12
+
+					counters[matrixnum]++
+
+					// margin +  which block + column within block
+					return 10 + (d[0] * 650) + (inmatrixcol * 16);
+                })
+                .attr("y", function(d, i) {
+					var matrixcol = d[1]
+					var matrixnum = (parseInt(d[1])*2) + parseInt(d[0])
+					var hm = Math.floor(ycounters[matrixnum]/12)
+
+					ycounters[matrixnum]++
+
+					// margin +  which block + column within block
+					return 10 + (d[1] * 650) + (hm * 16);
+                })
+				.attr("id",function(d){
+					return "rect" + d[3];
+				})
+                .attr("width", function(d) {
+                    return 15;
+                })
+                .attr("height", function(d) {
+                    return 15;
+                })
+                .attr("opacity", function(d) {
+                    return .85;
+                })
+                .attr("fill", function(d) {
+                    return ("pink");
+                })
+				.attr("class", function(d){
+					predicted_label = "predicted_label_" + d[1];
+					true_label = "true_label_" + d[0];
+
+					return true_label + " " + predicted_label;
+				})
+
+	d3.select("#review")
+		.select("#testList")
+		.selectAll("rect")
+			.data(
+				dataset.filter(d => d[0] != d[1]),
+				function(d){
+					return d[3];
+				}
+			)
+			.enter()
+			.append("li")
+			.attr("id",function(d){
+				return "text" + d[3];
+			})
+			.html(function(d){
+				table = "<table><tr>"
+
+				table += "<td> True: ";
+				table += getType(d[0]);
+				table += "</td>"
+
+				table += "<td> Predict: ";
+				table += getType(d[1]);
+				table += "</td>"
+
+				table += "<td>" + d[2].substr(0,200); + "</td>"
+				table += "</tr> </table>"
+				return  table;
+			})
+
+    rect.on("click", function(d_on) {
+		//always clear out the review to be blank on new click
+		d3.select("#review")
+					.select("#testList")
+					.html("")
+		//if its a new block being clicked set things back (purple)
+		if(!this.classList.contains("past")){
+			d3.selectAll(".past")
+				.attr("fill","pink")
+				.classed("past", false)
+			d3.selectAll(".reclick")
+				.attr("fill","pink")
+				.classed("reclick", false)
+		}
+		//if its a new block being clicked set things back (yellow)
+		if(!this.classList.contains("reclick")){
+			d3.selectAll(".reclick")
+				.attr("fill","pink")
+				.classed("reclick", false)
+		}
+
+		d3.select(this)	
+			//slack message
+			textId = ""
+			x = "." + this.classList[0];
+			y = "."+ this.classList[1];
+			test = x + y
+
+			x1 = x.charAt(x.length-1)
+			y1 = y.charAt(y.length-1)
+			
+			if(this.classList.contains("past")){
+				d3.select(this)
+					.classed("reclick",true)
+				Id = this.id;
+				textId = "#text" + Id.substring(4);
+			}
+
+			d3.selectAll(test)
+				.attr("fill","purple")
+				.classed("past", "true")
+
+			d3.select("#review")
+				.select("#testList")
+				.selectAll("rect")
+					.data(
+						dataset
+							.filter(d => d[0] == x1)
+							.filter(d => d[1] == y1),
+							function(d){
+								return d[3];
+							}
+					)
+					.enter()
+					.append("li")
+					.attr("id",function(d){
+						return "text" + d[3];
+					})
+					.html(function(d){
+						table = "<table><tr>"
+
+						table += "<td> True: ";
+						table += getType(d[0]);
+						table += "</td>"
+
+						table += "<td> Predict: ";
+						table += getType(d[1]);
+						table += "</td>"
+
+						table += "<td>" + d[2].substr(0,200); + "</td>"
+						table += "</tr> </table>"
+						return  table;
+					})
+			d3.select(".reclick")
+				.attr("fill","yellow")
+			if(textId != ""){
+				d3.selectAll(textId)
+					.classed("highlight", true)
+			}
+
+		d3.select("#review")
+			.select("#testList")
+			.selectAll("li")
+			.on("mouseover", function(d_on) {
+				d3.select(this)	
+					.classed("lighthigh",true)
+					id = this.id;
+					rectId = "#rect" + id.substring(4);
+					d3.selectAll(rectId)	
+						.attr("fill","green")
+			})
+			.on("mouseout", function(d_on) {
+				d3.select(this)	
+					.classed("lighthigh",false)
+					id = this.id;
+					rectId = "#rect" + id.substring(4);
+					d3.selectAll(rectId)	
+						.attr("fill", "purple")
+			})
+	})
+
+	d3.select("#review")
+		.select("#testList")
+		.selectAll("li")
+		.on("mouseover", function(d_on) {
+			d3.select(this)	
+				.classed("lighthigh",true)
+				id = this.id;
+				rectId = "#rect" + id.substring(4);
+				d3.selectAll(rectId)	
+					.attr("fill","green")
+
+		})
+		.on("mouseout", function(d_on) {
+			d3.select(this)	
+				.classed("lighthigh",false)
+				id = this.id;
+				rectId = "#rect" + id.substring(4);
+				d3.selectAll(rectId)	
+					.attr("fill","pink")
+		})
+});
+
+</script>
+</body>
+</html>

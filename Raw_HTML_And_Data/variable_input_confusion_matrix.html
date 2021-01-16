@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+	<style>
+		h1{
+			color: white;
+		}
+		body {
+			background-color: black;
+			font-family: Arial, sans-serif;
+			font-size: larger;
+		}
+		.box_highlighted { 
+			background-color: #ffb; 
+			border: 1px solid #b53;
+		}
+		.highlight{
+			background-color: yellow;
+		}
+		.lighthigh{
+			background-color: green;
+		}
+		li{
+			font-size: smaller;
+		}
+		td{
+			min-width: 100px;
+		}
+		#review{
+			border:1px solid pink; 
+			padding: 5px; 
+			float: right; 
+			width: 800px; 
+			height: 1100px; 
+			background-color: white;
+			color: black;
+			margin: 20px;
+			overflow: scroll;
+		}
+		#matrix{
+			border:1px solid pink; 
+			padding: 5px; 
+			float: left;
+			width: 1200px; 
+			height: 1100px; 		
+			margin: 20px;
+			overflow: scroll;
+		}
+	</style>
+</head>
+
+<body>
+	<h1> Interactive Confusion Matrix </h1>
+	<div id="matrix"> </div>
+	<div id="review">
+		Data 
+		<ul id = "testList"></ul>
+	</div>
+</body>
+
+<script>
+	/* I've temporarily left out the 'getType' function, since the names of these
+	types are not included in the JSON file that is given to the JavaScript. More functionality can be incldued later to bring the names in as well as the raw data. Type will be represented by the given numeric identifier for now. */
+
+	/* extractTypes: identifies different types each data point can be identified
+	as, based off of the 'true_label' attribute in JSON file
+	given: JSON file
+	returns: dictionary of possible values for 'true_label' */
+	function extractTypes(data){
+		var lookup = {};
+		var items = data
+		var result = [];
+
+		for (var item, i=0; item = items[i++];){
+			var name = item.true_label;
+
+			if(!(name in lookup)){
+				lookup[name] = 1;
+				result.push(name);
+			}
+		}
+
+		return lookup;
+	}
+
+	// Activating D3, and creating a table with the given JSON
+	d3.json("example_test_result.json", function(d) {
+		console.log(d); // Ensuring that data is properly read in.
+		console.log(Object.keys(extractTypes(d))); // Logging list of possible types
+
+		// # of Categories x # of Categories Table
+		tableDimension = Object.keys(extractTypes(d)).length
+		var table = new Array(tableDimension);
+		var dataset = [];
+		for(var i=0; i<tableDimension; i++){
+			table[i] = new Array(tableDimension);
+			for(var j=0; j<tableDimension; j++){
+				table[i][j] = 0;
+			}
+		}
+
+		// Filling out table with prediction counts and recording dataset
+		/* Code is currently dependent on JSON having the data points: 
+		"true_label" and "predicted_label" */
+		for(var i=0; i<d.length; i+=1){ // i+=1 or i++ ?
+			table[parseInt(d[i]["true_label"])][parseInt(d[i]["predicted_label"])]+=1;
+			dataset.push([d[i]["true_label"], d[i]["predicted_label"], d[i]["text"], d[i]["index"]]);
+		}
+
+		console.log(table); // Reporting current state of table values.
+
+		var w = 1050;
+		var h = 1050; // These are dimensions?
+
+		// Create SVG element
+		var svg = d3.select("body") // This could be problematic later
+					.select("#matrix")
+					.append("svg")
+					.attr("width", w)
+					.attr("height", h);
+
+		var rect = svg.selectAll("rect")
+					  .data(dataset)
+					  .enter()
+					  .append("rect");
+
+		
+	});
+
+</script>
+
+</html>
